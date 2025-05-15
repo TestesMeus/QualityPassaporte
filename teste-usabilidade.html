@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste de Usabilidade</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f7f7f7;
+      color: #333;
+    }
+    #inicio, #testando {
+      display: none;
+    }
+    button {
+      padding: 1rem 2rem;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="inicio">
+    <h2>Bem-vindo(a) ao teste!</h2>
+    <p>Vamos gravar sua tela enquanto você realiza uma tarefa simples. Não estamos testando você, mas sim a plataforma.</p>
+    <p>Ao clicar em "Começar", pediremos permissão para gravar a tela.</p>
+    <button id="comecarBtn">Começar</button>
+  </div>
+
+  <div id="testando">
+    <h3>Você está sendo gravado!</h3>
+    <p>Por favor, use a plataforma normalmente. Tente realizar um cadastro de usuario para nossa plataforma. A gravação será encerrada ao finalizar o cadastro</p>
+    <iframe id="iframeTeste" width="100%" height="500px"></iframe>
+  </div>
+
+  <script>
+    document.getElementById('inicio').style.display = 'block';
+
+    let recorder, stream, startTime;
+
+    document.getElementById('comecarBtn').onclick = async () => {
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        recorder = new MediaRecorder(stream);
+        const chunks = [];
+        startTime = new Date();
+
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+          const endTime = new Date();
+          const durationMs = endTime - startTime;
+          const durationMin = (durationMs / 60000).toFixed(2);
+
+          // Cria o vídeo
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `teste-${startTime.toISOString()}.webm`;
+          a.click();
+
+          // Cria o TXT com os dados
+          const txt = `Início: ${startTime.toLocaleString()}\nFim: ${endTime.toLocaleString()}\nDuração (min): ${durationMin}`;
+          const txtBlob = new Blob([txt], { type: 'text/plain' });
+          const txtUrl = URL.createObjectURL(txtBlob);
+          const txtA = document.createElement('a');
+          txtA.href = txtUrl;
+          txtA.download = `resumo-${startTime.toISOString()}.txt`;
+          txtA.click();
+
+          // Redireciona para o formulário
+          window.location.href = "https://forms.gle/5As9EqhLAaMQPQNu6"; // <-- Coloque aqui o link do Google Forms
+        };
+
+        recorder.start();
+        document.getElementById('inicio').style.display = 'none';
+        document.getElementById('testando').style.display = 'block';
+
+        const iframe = document.getElementById('iframeTeste');
+        iframe.src = "https://hmg-passaporte.alvarezgonca.com.br/"; // <-- Coloque aqui o link da sua plataforma
+
+        // Espera o iframe carregar
+        iframe.onload = () => {
+          const iframeWindow = iframe.contentWindow;
+
+          // Checa a cada 1s se o botão final foi clicado
+          const checkButton = setInterval(() => {
+            try {
+              const button = iframeWindow.document.getElementById("finalizarCadastro"); 
+              // <-- Exemplo lógico: substitua "finalizarCadastro" pelo ID do botão que indica que o teste foi finalizado
+              if (button) {
+                button.addEventListener('click', () => {
+                  clearInterval(checkButton);
+                  recorder.stop();
+                  stream.getTracks().forEach(track => track.stop());
+                });
+              }
+            } catch (e) {
+              // Ignora erro de acesso cross-origin se ocorrer
+            }
+          }, 1000);
+        };
+      } catch (err) {
+        alert("Permissão negada ou erro ao iniciar gravação.");
+        console.error(err);
+      }
+    };
+  </script>
+</body>
+</html>
